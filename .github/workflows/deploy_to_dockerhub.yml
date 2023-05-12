@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ../backend/config-server
+        working-directory: ../../backend/config-server
     steps:
       - name: clone from reporitory
         uses: actions/checkout@v3
