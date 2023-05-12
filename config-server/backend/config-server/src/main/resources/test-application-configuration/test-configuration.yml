@@ -1,0 +1,4 @@
+microservice-one.driver-class-name =org.postgresql.Driver
+microservice-one.url =jdbc:postgresql://localhost:5436/TEST_DB
+microservice-one.username =test_user
+microservice-one.password =test_pass

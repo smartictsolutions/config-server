@@ -1,0 +1,23 @@
+microservice-one:
+  driver-class-name: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5436/TEST_DB
+  username: test_user
+  password: e4ec47a252f0181f3a2f9355024731e4988053c1321cf9d17e424c2fd1aef429
+  port: 8088
+  
+eybis:
+  shutdown-after-load: false
+  is-test-env: false
+  skip-ws-connect: false
+  hazelcast:
+    cluster-address:
+      - 152.24.0.15:5701
+  kafka:
+    ip: 152.24.0.9
+    port: 9093
+    contentUserDataTopic: contentUserData
+    contentCompleteDataTopic: contentCompleteData
+    subjectContentTopic: subjectContent
+    contentCompletePointsModificationTopic: contentCompletePointsModification
+    numberOfTopicPartition: 1
+    numberOfTopicReplication: 1

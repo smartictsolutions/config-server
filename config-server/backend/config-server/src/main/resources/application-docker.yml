@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///applications-configuration
+          bootstrap: trues
+  application:
+    name: config-server
+  profiles:
+    active: native
+server:
+  port: '7030'
+encrypt:
+  key: APODNU3093r2rbjzxcn09u213asdhy08WRFH
+

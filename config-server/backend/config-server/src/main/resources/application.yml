@@ -1,0 +1,16 @@
+spring:
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: "[classpath:/, classpath:/test-applications-configuration, classpath:/test-applications-configuration/{application}, classpath:/test-applications-configuration/{application}/{profile}]"
+          bootstrap: true
+  application:
+    name: config-server
+  profiles:
+    active: native
+server:
+  port: '7030'
+encrypt:
+  key: APODNU3093r2rbjzxcn09u213asdhy08WRFH
+

@@ -1,0 +1,149 @@
+
+import com.bmuschko.gradle.docker.tasks.image.*
+import org.yaml.snakeyaml.Yaml
+
+plugins {
+	id 'java-library'
+	id 'org.springframework.boot' version '2.7.10'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'com.bmuschko.docker-remote-api' version '6.6.1'
+	id "com.avast.gradle.docker-compose" version '0.13.3'
+	id 'com.github.node-gradle.node' version '2.2.4'
+	id 'com.diffplug.gradle.spotless' version '4.5.1'
+	id "jacoco"
+	id "org.sonarqube" version "3.0"
+}
+
+group = 'com.smartict-config-server'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+compileJava.options.encoding = 'UTF-8'
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'application'
+apply plugin: 'com.bmuschko.docker-remote-api'
+apply plugin: 'docker-compose'
+apply plugin: 'org.sonarqube'
+
+repositories {
+	mavenCentral()
+	gradlePluginPortal()
+}
+
+ext {
+	set('springCloudVersion', "2021.0.6")
+}
+
+dependencies {
+	implementation 'org.springframework.cloud:spring-cloud-config-server'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+// eclipse'te projeyi run etmek için lazım
+mainClassName = 'com.smartict.configserver.Application'
+applicationDefaultJvmArgs = ["-Dspring.profiles.active=dev"]
+
+bootJar() {
+	doFirst {
+		clean
+	}
+	enabled = true
+	manifest {
+		attributes 'Start-Class': 'com.smartict.configserver.Application'
+	}
+}
+
+jar {
+	zip64 = true
+	enabled = true
+	manifest {
+		attributes 'Main-Class': 'com.smartict.configserver.Application'
+	}
+	from {
+		configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+		configurations.runtimeClasspath.collect() { it.isDirectory() ? it : zipTree(it) }
+	} exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+/** ===========DOCKER IMAGE OLUŞTURMA=============================================================================== */
+//Uyumsuzluk olmaması için docker-compose-prod dosyasında yazacağımız image ismini alıyor.
+def dockerComposeYml = new Yaml().load(new File(new File("$projectDir").getParentFile().getParentFile().getAbsolutePath() + '/DevOps/docker-compose.yml').newInputStream())
+String appDockerImageName = dockerComposeYml["services"]["config-server-app"]["image"]
+
+task dockerRemoveConfigServerImage(type: DockerRemoveImage) {
+	group = "config server build"
+	description = "Removes Eybis Application docker image"
+	targetImageId { appDockerImageName }
+	onError {
+		System.out.println("No previous image to delete")
+	}
+}
+
+//Docker build işlemi yapılır(config dosyaları ve Dockerfile kopyalanır. İmage oluşturulur.). Bu build öncesinde sırasıyla dockerRemoveEybisImage->spotlessCheck->bootJar çalıştırıldıktan sonra build çalıştırılır.
+task dockerBuildConfigServerImage(type: DockerBuildImage, dependsOn: [dockerRemoveConfigServerImage, spotlessCheck.mustRunAfter('dockerRemoveConfigServerImage'), bootJar.mustRunAfter(spotlessCheck)]) {
+	group = "config server build"
+	description = "Creates Config Server Application docker image. It removes any previous images, creates a deployable Spring Boot jar file and bundles everything in a docker image"
+	doFirst {
+		println 'Starting copy for Dockerfile...'
+		copy {
+			from './Dockerfile'
+			into 'build/libs'
+		}
+		copy {
+			from 'src/main/resources/application-docker.yml'
+			into 'build/libs'
+			rename('application-docker.yml', 'config-server-app-config.yml')
+		}
+		copy {
+			from 'src/main/resources/test-application-configuration/test-configuration.yml'
+			into 'build/libs'
+		}
+		println 'Starting copy for config files...'
+		copy {
+			from 'src/main/resources/application-docker.yml'
+			into '../../DevOps/config-server-configuration'
+			rename('application-docker.yml', 'config-server-app-config.yml')
+		}
+		copy {
+			from 'src/main/resources/test-application-configuration/test-configuration.yml'
+			into '../../DevOps/applications-configuration'
+		}
+	}
+	description = "Builds ${appDockerImageName} docker image."
+	inputDir.set(file('build/libs'))
+	images.add(appDockerImageName)
+}
+
+task dockerSaveConfigServerImage(dependsOn: dockerBuildConfigServerImage, type: DockerSaveImage) {
+	group = "config server build"
+	description = "This task creates Config Server Application docker image and exports it as a .tar file to be deployed remotely"
+	destFile.set(file("../../DevOps/${appDockerImageName}.tar"))
+	image.set(appDockerImageName)
+	// bu olmazsa Jenkins'te bu task '> Task :dockerSaveEybisImage UP-TO-DATE' olarak görünüyor ve yeni imaj yerine önceki sunucuya kopyalanıyor
+	outputs.upToDateWhen { false } // https://stackoverflow.com/a/18410574
+}
+
+
+/** ===========SPOTLESS============================================================================================= */
+	spotless {
+		java {
+			target '**/*.java'
+			licenseHeader '/* SmartICT Bilisim A.S. (C) $YEAR */'
+			eclipse().configFile '../config-server-java-code-style.xml'
+			removeUnusedImports()
+			importOrder('java', 'javax', 'com.smartict', 'com.ict', '')
+		}
+	}
+
+

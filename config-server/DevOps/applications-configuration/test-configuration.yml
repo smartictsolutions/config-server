@@ -1,0 +1,7 @@
+microservice-two:
+  driver-class-name: org.postgresql.Driver
+  url: jdbc:postgresql://localhost:5436/TEST_DB
+  username: test_user
+  password: e4ec47a252f0181f3a2f9355024731e4988053c1321cf9d17e424c2fd1aef429
+  port: 4040
+  

@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: '5'
+  config:
+    import: optional:configserver:http://localhost:7030
+  application:
+    name: config-client
+  jpa:
+    hibernate:
+      ddl-auto: create

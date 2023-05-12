@@ -1,0 +1,1 @@
+This directory contains the configurations of the config-server microservice.

@@ -1,0 +1,28 @@
+version: '3.9'
+services: 
+ config-server-app:
+    container_name: config-server-container
+    image: config-server-app-image
+    restart: always
+    ports:
+      - "7030:7030"
+    volumes:
+      - ./config-server-configuration/config-server-app-config.yml:/config-server-configuration/config-server-app-config.yml
+      - ./applications-configuration:/applications-configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    networks:
+      config-server-net:
+        ipv4_address: 182.24.0.2
+        
+networks:
+  config-server-net:
+    name: config-server-net
+    ipam:
+      driver: default
+      config:
+        - subnet: 182.24.0.0/16
+          gateway: 182.24.0.1
